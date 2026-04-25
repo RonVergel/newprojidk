@@ -645,6 +645,15 @@ output {
   grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
   gap: 0.62rem;
   align-content: start;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.composer-scroll-locked .track-list,
+.composer-scroll-locked .roll-scroll,
+.mixer-scroll-locked .mixer-strips {
+  overflow: hidden !important;
 }
 
 .mixer-strip {

@@ -237,6 +237,8 @@ const ui = {
   humanizeBtn: document.getElementById("humanizeBtn"),
   nudgeLeftBtn: document.getElementById("nudgeLeftBtn"),
   nudgeRightBtn: document.getElementById("nudgeRightBtn"),
+  lockComposerScrollBtn: document.getElementById("lockComposerScrollBtn"),
+  lockMixerScrollBtn: document.getElementById("lockMixerScrollBtn"),
   midiConnectBtn: document.getElementById("midiConnectBtn"),
   midiInputSelect: document.getElementById("midiInputSelect"),
   midiChannelSelect: document.getElementById("midiChannelSelect"),
@@ -298,6 +300,8 @@ let shownSoundfontFallbackWarning = false;
 let transportTick = 0;
 let metronomeEnabled = false;
 let countInEnabled = false;
+let composerScrollLocked = false;
+let mixerScrollLocked = false;
 let countInStepsRemaining = 0;
 let didPaintInCurrentStroke = false;
 
@@ -1404,6 +1408,36 @@ function toggleCountIn() {
   setStatus(`Count-in ${countInEnabled ? "enabled" : "disabled"}.`);
 }
 
+function updateScrollLockButtons() {
+  if (ui.lockComposerScrollBtn) {
+    ui.lockComposerScrollBtn.textContent = `Lock Composer: ${composerScrollLocked ? "On" : "Off"}`;
+    ui.lockComposerScrollBtn.classList.toggle("btn-primary", composerScrollLocked);
+  }
+
+  if (ui.lockMixerScrollBtn) {
+    ui.lockMixerScrollBtn.textContent = `Lock Mixer: ${mixerScrollLocked ? "On" : "Off"}`;
+    ui.lockMixerScrollBtn.classList.toggle("btn-primary", mixerScrollLocked);
+  }
+}
+
+function applyScrollLockClasses() {
+  document.body.classList.toggle("composer-scroll-locked", composerScrollLocked);
+  document.body.classList.toggle("mixer-scroll-locked", mixerScrollLocked);
+  updateScrollLockButtons();
+}
+
+function toggleComposerScrollLock() {
+  composerScrollLocked = !composerScrollLocked;
+  applyScrollLockClasses();
+  setStatus(`Composer scroll lock ${composerScrollLocked ? "enabled" : "disabled"}.`);
+}
+
+function toggleMixerScrollLock() {
+  mixerScrollLocked = !mixerScrollLocked;
+  applyScrollLockClasses();
+  setStatus(`Mixer scroll lock ${mixerScrollLocked ? "enabled" : "disabled"}.`);
+}
+
 function applyTemplateFromSelect() {
   const template = ui.templateSelect ? ui.templateSelect.value : "cinematic";
   pushHistorySilent();
@@ -2457,6 +2491,18 @@ function bindEvents() {
     });
   }
 
+  if (ui.lockComposerScrollBtn) {
+    ui.lockComposerScrollBtn.addEventListener("click", () => {
+      toggleComposerScrollLock();
+    });
+  }
+
+  if (ui.lockMixerScrollBtn) {
+    ui.lockMixerScrollBtn.addEventListener("click", () => {
+      toggleMixerScrollLock();
+    });
+  }
+
   ui.saveLocalBtn.addEventListener("click", saveLocalProject);
   ui.loadLocalBtn.addEventListener("click", loadLocalProject);
   ui.exportBtn.addEventListener("click", exportProject);
@@ -2587,6 +2633,7 @@ function initialize() {
   bindEvents();
   applyTransportControls();
   updateTransportOptionButtons();
+  applyScrollLockClasses();
   updateHistoryButtons();
 
   if (!tryLoadBootProject()) {
