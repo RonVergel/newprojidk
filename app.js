@@ -85,6 +85,83 @@ const INSTRUMENTS = {
     reverbSend: 0.25,
     delaySend: 0.05,
   },
+  "Drum Machine": {
+    oscillator: "square",
+    envelope: { attack: 0.001, decay: 0.09, sustain: 0.01, release: 0.12 },
+    volume: -8,
+    reverbSend: 0.04,
+    delaySend: 0,
+  },
+  "Cinematic Percussion": {
+    oscillator: "triangle",
+    envelope: { attack: 0.002, decay: 0.14, sustain: 0.02, release: 0.2 },
+    volume: -9,
+    reverbSend: 0.16,
+    delaySend: 0.02,
+  },
+  "Mallets": {
+    oscillator: "sine",
+    envelope: { attack: 0.002, decay: 0.2, sustain: 0.02, release: 0.5 },
+    volume: -10,
+    reverbSend: 0.2,
+    delaySend: 0.04,
+  },
+  "Sub Bass": {
+    oscillator: "sine",
+    envelope: { attack: 0.01, decay: 0.12, sustain: 0.7, release: 0.25 },
+    volume: -7,
+    reverbSend: 0.01,
+    delaySend: 0.01,
+  },
+  "EDM Bass": {
+    oscillator: "sawtooth",
+    envelope: { attack: 0.005, decay: 0.12, sustain: 0.48, release: 0.2 },
+    volume: -8,
+    reverbSend: 0.03,
+    delaySend: 0.03,
+  },
+  "EDM Lead": {
+    oscillator: "square",
+    envelope: { attack: 0.01, decay: 0.11, sustain: 0.36, release: 0.2 },
+    volume: -9,
+    reverbSend: 0.12,
+    delaySend: 0.18,
+  },
+  "EDM Pluck": {
+    oscillator: "triangle",
+    envelope: { attack: 0.001, decay: 0.18, sustain: 0.02, release: 0.16 },
+    volume: -8,
+    reverbSend: 0.11,
+    delaySend: 0.14,
+  },
+  "Synth Pad": {
+    oscillator: "sawtooth",
+    envelope: { attack: 0.24, decay: 0.22, sustain: 0.78, release: 1.9 },
+    volume: -11,
+    reverbSend: 0.35,
+    delaySend: 0.08,
+  },
+  "Techno Stab": {
+    oscillator: "square",
+    envelope: { attack: 0.001, decay: 0.13, sustain: 0.08, release: 0.12 },
+    volume: -9,
+    reverbSend: 0.07,
+    delaySend: 0.06,
+  },
+  Arp: {
+    oscillator: "triangle",
+    envelope: { attack: 0.002, decay: 0.14, sustain: 0.22, release: 0.18 },
+    volume: -9,
+    reverbSend: 0.09,
+    delaySend: 0.2,
+  },
+  "FX Atmos": {
+    oscillator: "sine",
+    envelope: { attack: 0.4, decay: 0.3, sustain: 0.74, release: 2.2 },
+    volume: -12,
+    reverbSend: 0.42,
+    delaySend: 0.2,
+  },
 };
 
 const SOUNDFONT_INSTRUMENT_MAP = {
@@ -94,6 +171,37 @@ const SOUNDFONT_INSTRUMENT_MAP = {
   Choir: "choir_aahs",
   Percussion: "timpani",
   Piano: "acoustic_grand_piano",
+  "Drum Machine": "synth_drum",
+  "Cinematic Percussion": "taiko_drum",
+  "Mallets": "marimba",
+  "Sub Bass": "synth_bass_1",
+  "EDM Bass": "synth_bass_2",
+  "EDM Lead": "lead_2_sawtooth",
+  "EDM Pluck": "lead_1_square",
+  "Synth Pad": "pad_3_polysynth",
+  "Techno Stab": "synth_brass_1",
+  Arp: "clavinet",
+  "FX Atmos": "fx_4_atmosphere",
+};
+
+const INSTRUMENT_MIDI_PROGRAMS = {
+  Strings: 49,
+  Brass: 62,
+  Woodwinds: 69,
+  Choir: 53,
+  Percussion: 48,
+  Piano: 1,
+  "Drum Machine": 119,
+  "Cinematic Percussion": 117,
+  "Mallets": 13,
+  "Sub Bass": 39,
+  "EDM Bass": 40,
+  "EDM Lead": 82,
+  "EDM Pluck": 81,
+  "Synth Pad": 91,
+  "Techno Stab": 63,
+  Arp: 8,
+  "FX Atmos": 100,
 };
 
 const ui = {
@@ -120,6 +228,7 @@ const ui = {
   saveLocalBtn: document.getElementById("saveLocalBtn"),
   loadLocalBtn: document.getElementById("loadLocalBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  exportSheetsBtn: document.getElementById("exportSheetsBtn"),
   importBtn: document.getElementById("importBtn"),
   importFileInput: document.getElementById("importFileInput"),
   templateSelect: document.getElementById("templateSelect"),
@@ -1752,6 +1861,175 @@ function exportProject() {
   }
 }
 
+function sanitizeFileName(value) {
+  return String(value || "track")
+    .trim()
+    .replace(/[^a-zA-Z0-9-_ ]/g, "")
+    .replace(/\s+/g, "-")
+    .slice(0, 48) || "track";
+}
+
+function hasTrackNotes(track) {
+  if (!track || !Array.isArray(track.pattern)) {
+    return false;
+  }
+
+  for (let noteIndex = 0; noteIndex < NOTE_COUNT; noteIndex += 1) {
+    for (let stepIndex = 0; stepIndex < loopSteps; stepIndex += 1) {
+      if (asNumber(track.pattern[noteIndex][stepIndex], 0) > 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function noteNameToMusicXmlPitch(noteName) {
+  const midi = Math.round(Tone.Frequency(noteName).toMidi());
+  const pitchIndex = ((midi % 12) + 12) % 12;
+  const octave = Math.floor(midi / 12) - 1;
+
+  const pitchMap = {
+    0: { step: "C", alter: 0 },
+    1: { step: "C", alter: 1 },
+    2: { step: "D", alter: 0 },
+    3: { step: "D", alter: 1 },
+    4: { step: "E", alter: 0 },
+    5: { step: "F", alter: 0 },
+    6: { step: "F", alter: 1 },
+    7: { step: "G", alter: 0 },
+    8: { step: "G", alter: 1 },
+    9: { step: "A", alter: 0 },
+    10: { step: "A", alter: 1 },
+    11: { step: "B", alter: 0 },
+  };
+
+  return {
+    ...pitchMap[pitchIndex],
+    octave,
+  };
+}
+
+function buildMusicXmlForTrack(track, bpm = 102) {
+  const stepsPerMeasure = 16;
+  const totalMeasures = Math.max(1, Math.ceil(loopSteps / stepsPerMeasure));
+  const program = INSTRUMENT_MIDI_PROGRAMS[track.instrument] || 1;
+  const scorePartName = escapeHtml(track.name || track.instrument || "Track");
+  const instrumentName = escapeHtml(track.instrument || "Instrument");
+
+  const measures = [];
+
+  for (let measureIndex = 0; measureIndex < totalMeasures; measureIndex += 1) {
+    const measureStart = measureIndex * stepsPerMeasure;
+    const measureEnd = Math.min(loopSteps, measureStart + stepsPerMeasure);
+    const noteLines = [];
+
+    if (measureIndex === 0) {
+      noteLines.push(
+        "<attributes>",
+        "<divisions>4</divisions>",
+        "<key><fifths>0</fifths></key>",
+        "<time><beats>4</beats><beat-type>4</beat-type></time>",
+        "<clef><sign>G</sign><line>2</line></clef>",
+        "</attributes>",
+        "<direction placement=\"above\">",
+        "<direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>" + Math.round(bpm) + "</per-minute></metronome></direction-type>",
+        "<sound tempo=\"" + Math.round(bpm) + "\"/>",
+        "</direction>"
+      );
+    }
+
+    for (let stepIndex = measureStart; stepIndex < measureEnd; stepIndex += 1) {
+      const notesAtStep = [];
+
+      for (let noteIndex = 0; noteIndex < NOTE_COUNT; noteIndex += 1) {
+        if (asNumber(track.pattern[noteIndex][stepIndex], 0) > 0) {
+          notesAtStep.push(NOTE_NAMES[noteIndex]);
+        }
+      }
+
+      if (notesAtStep.length === 0) {
+        noteLines.push("<note><rest/><duration>1</duration><voice>1</voice><type>16th</type></note>");
+        continue;
+      }
+
+      notesAtStep.forEach((noteName, notePosition) => {
+        const pitch = noteNameToMusicXmlPitch(noteName);
+        noteLines.push("<note>");
+        if (notePosition > 0) {
+          noteLines.push("<chord/>");
+        }
+        noteLines.push("<pitch>");
+        noteLines.push(`<step>${pitch.step}</step>`);
+        if (pitch.alter !== 0) {
+          noteLines.push(`<alter>${pitch.alter}</alter>`);
+        }
+        noteLines.push(`<octave>${pitch.octave}</octave>`);
+        noteLines.push("</pitch>");
+        noteLines.push("<duration>1</duration>");
+        noteLines.push("<voice>1</voice>");
+        noteLines.push("<type>16th</type>");
+        noteLines.push("</note>");
+      });
+    }
+
+    measures.push(`<measure number=\"${measureIndex + 1}\">${noteLines.join("")}</measure>`);
+  }
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+    '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">',
+    '<score-partwise version="3.1">',
+    "<part-list>",
+    '<score-part id="P1">',
+    `<part-name>${scorePartName}</part-name>`,
+    '<score-instrument id="P1-I1">',
+    `<instrument-name>${instrumentName}</instrument-name>`,
+    "</score-instrument>",
+    '<midi-instrument id="P1-I1">',
+    "<midi-channel>1</midi-channel>",
+    `<midi-program>${program}</midi-program>`,
+    "</midi-instrument>",
+    "</score-part>",
+    "</part-list>",
+    '<part id="P1">',
+    measures.join(""),
+    "</part>",
+    "</score-partwise>",
+  ].join("\n");
+}
+
+function downloadTextFile(content, fileName, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportSheetMusicPerTrack() {
+  const activeTracks = tracks.filter((track) => hasTrackNotes(track));
+
+  if (activeTracks.length === 0) {
+    setStatus("No notes found. Add notes before exporting sheet music.", true);
+    return;
+  }
+
+  const bpm = clamp(asNumber(ui.tempoSlider.value, 102), 50, 180);
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  activeTracks.forEach((track) => {
+    const xml = buildMusicXmlForTrack(track, bpm);
+    const safeTrackName = sanitizeFileName(track.name || track.instrument || "track");
+    downloadTextFile(xml, `${safeTrackName}-${stamp}.musicxml`, "application/vnd.recordare.musicxml+xml");
+  });
+
+  setStatus(`Exported ${activeTracks.length} sheet file(s). MusicXML files are compatible with Flat and Noteflight import APIs.`);
+}
+
 async function importProjectFile(file) {
   if (!file) {
     return;
@@ -2182,6 +2460,10 @@ function bindEvents() {
   ui.saveLocalBtn.addEventListener("click", saveLocalProject);
   ui.loadLocalBtn.addEventListener("click", loadLocalProject);
   ui.exportBtn.addEventListener("click", exportProject);
+
+  if (ui.exportSheetsBtn) {
+    ui.exportSheetsBtn.addEventListener("click", exportSheetMusicPerTrack);
+  }
 
   ui.importBtn.addEventListener("click", () => {
     ui.importFileInput.click();
