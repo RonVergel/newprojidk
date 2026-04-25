@@ -478,8 +478,11 @@ output {
 
 .phrase-library {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 0.48rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .phrase-card {

@@ -42,74 +42,53 @@ const NOTE_NAMES = Array.from({ length: NOTE_COUNT }, (_, index) =>
 
 const CHORD_DRAG_MIME = "application/x-orchestrion-chord";
 
-const CHORD_LIBRARY = [
-  {
-    id: "c-major",
-    name: "C Major",
-    description: "C E G C",
-    events: [
-      { step: 0, semitone: 0, velocity: 0.82 },
-      { step: 0, semitone: 4, velocity: 0.8 },
-      { step: 0, semitone: 7, velocity: 0.76 },
-      { step: 0, semitone: 12, velocity: 0.72 },
-    ],
-  },
-  {
-    id: "a-minor",
-    name: "A Minor",
-    description: "A C E A",
-    events: [
-      { step: 0, semitone: 0, velocity: 0.82 },
-      { step: 0, semitone: 3, velocity: 0.8 },
-      { step: 0, semitone: 7, velocity: 0.76 },
-      { step: 0, semitone: 12, velocity: 0.72 },
-    ],
-  },
-  {
-    id: "f-major",
-    name: "F Major",
-    description: "F A C F",
-    events: [
-      { step: 0, semitone: 0, velocity: 0.82 },
-      { step: 0, semitone: 4, velocity: 0.8 },
-      { step: 0, semitone: 7, velocity: 0.76 },
-      { step: 0, semitone: 12, velocity: 0.72 },
-    ],
-  },
-  {
-    id: "g-major",
-    name: "G Major",
-    description: "G B D G",
-    events: [
-      { step: 0, semitone: 0, velocity: 0.82 },
-      { step: 0, semitone: 4, velocity: 0.8 },
-      { step: 0, semitone: 7, velocity: 0.76 },
-      { step: 0, semitone: 12, velocity: 0.72 },
-    ],
-  },
-  {
-    id: "d-minor-7",
-    name: "D Minor 7",
-    description: "D F A C",
-    events: [
-      { step: 0, semitone: 0, velocity: 0.82 },
-      { step: 0, semitone: 3, velocity: 0.8 },
-      { step: 0, semitone: 7, velocity: 0.76 },
-      { step: 0, semitone: 10, velocity: 0.72 },
-    ],
-  },
-  {
-    id: "e-minor-7",
-    name: "E Minor 7",
-    description: "E G B D",
-    events: [
-      { step: 0, semitone: 0, velocity: 0.82 },
-      { step: 0, semitone: 3, velocity: 0.8 },
-      { step: 0, semitone: 7, velocity: 0.76 },
-      { step: 0, semitone: 10, velocity: 0.72 },
-    ],
-  },
+const PITCH_CLASS_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+const CHORD_ROOTS = PITCH_CLASS_NAMES.map((name, pitchClass) => ({
+  id: name.replace("#", "-sharp").toLowerCase(),
+  name,
+  pitchClass,
+}));
+
+const CHORD_QUALITIES = [
+  { id: "major", name: "Major", intervals: [0, 4, 7, 12] },
+  { id: "minor", name: "Minor", intervals: [0, 3, 7, 12] },
+  { id: "diminished", name: "Diminished", intervals: [0, 3, 6, 12] },
+  { id: "augmented", name: "Augmented", intervals: [0, 4, 8, 12] },
+  { id: "sus2", name: "Sus2", intervals: [0, 2, 7, 12] },
+  { id: "sus4", name: "Sus4", intervals: [0, 5, 7, 12] },
+  { id: "maj7", name: "Major 7", intervals: [0, 4, 7, 11] },
+  { id: "min7", name: "Minor 7", intervals: [0, 3, 7, 10] },
+  { id: "dom7", name: "Dominant 7", intervals: [0, 4, 7, 10] },
+  { id: "add9", name: "Add9", intervals: [0, 4, 7, 14] },
+  { id: "minadd9", name: "Minor Add9", intervals: [0, 3, 7, 14] },
+  { id: "dim7", name: "Diminished 7", intervals: [0, 3, 6, 9] },
 ];
+
+function buildChordDescription(rootPitchClass, intervals) {
+  return intervals
+    .map((interval) => PITCH_CLASS_NAMES[(rootPitchClass + interval) % 12])
+    .join(" ");
+}
+
+function buildChordEvents(intervals) {
+  const velocityMap = [0.84, 0.8, 0.76, 0.72, 0.68, 0.64];
+  return intervals.map((interval, index) => ({
+    step: 0,
+    semitone: interval,
+    velocity: velocityMap[Math.min(index, velocityMap.length - 1)],
+  }));
+}
+
+const CHORD_LIBRARY = CHORD_ROOTS.flatMap((root) => {
+  return CHORD_QUALITIES.map((quality) => ({
+    id: `${root.id}-${quality.id}`,
+    name: `${root.name} ${quality.name}`,
+    description: buildChordDescription(root.pitchClass, quality.intervals),
+    rootPitchClass: root.pitchClass,
+    events: buildChordEvents(quality.intervals),
+  }));
+});
 
 const TRACK_COLORS = ["#bf5f2f", "#1a7c79", "#a2413e", "#5f6fbb", "#b27a2d", "#3f8a52", "#9e3651", "#6e54a8"];
 
@@ -445,6 +424,21 @@ function getSelectedTrack() {
 
 function getChordById(chordId) {
   return CHORD_LIBRARY.find((chord) => chord.id === chordId) || null;
+}
+
+function nearestMidiForPitchClass(anchorMidi, pitchClass) {
+  const normalizedAnchorClass = ((anchorMidi % 12) + 12) % 12;
+  let delta = pitchClass - normalizedAnchorClass;
+
+  while (delta > 6) {
+    delta -= 12;
+  }
+
+  while (delta < -6) {
+    delta += 12;
+  }
+
+  return anchorMidi + delta;
 }
 
 function createPattern() {
@@ -1545,13 +1539,14 @@ async function previewChord(chordId) {
   await ensureAudioReady();
 
   const baseMidi = 60;
+  const rootMidi = baseMidi + asNumber(chord.rootPitchClass, 0);
   const stepSeconds = Tone.Time("16n").toSeconds();
   const startTime = Tone.now() + 0.05;
   const minMidi = TOP_MIDI - (NOTE_COUNT - 1);
   const maxMidi = TOP_MIDI;
 
   for (const event of chord.events) {
-    const targetMidi = clamp(baseMidi + asNumber(event.semitone, 0), minMidi, maxMidi);
+    const targetMidi = clamp(rootMidi + asNumber(event.semitone, 0), minMidi, maxMidi);
     const noteName = Tone.Frequency(targetMidi, "midi").toNote();
     const velocity = clamp01(asNumber(event.velocity, DEFAULT_NOTE_VELOCITY));
     triggerTrackAttackRelease(
@@ -1583,11 +1578,12 @@ function insertChordAtCell(chordId, anchorNoteIndex, anchorStep) {
   pushHistorySilent();
 
   const anchorMidi = Math.round(Tone.Frequency(anchorNoteName).toMidi());
+  const rootMidi = nearestMidiForPitchClass(anchorMidi, asNumber(chord.rootPitchClass, 0));
   let written = 0;
 
   for (const event of chord.events) {
     const step = (anchorStep + asNumber(event.step, 0)) % loopSteps;
-    const targetMidi = Math.round(anchorMidi + asNumber(event.semitone, 0));
+    const targetMidi = Math.round(rootMidi + asNumber(event.semitone, 0));
     const targetNoteIndex = midiNoteToPatternIndex(targetMidi);
 
     if (targetNoteIndex < 0) {
