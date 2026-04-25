@@ -418,7 +418,7 @@ output {
 
 .composer {
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto auto minmax(260px, 1fr);
   gap: 0.8rem;
 }
 
