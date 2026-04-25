@@ -19,48 +19,17 @@
     <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
 
     <div class="app-shell">
-      <header class="hero card">
-        <div class="hero-rail hero-rail-left">
-          <span class="headphone-dot" aria-hidden="true">◜</span>
-          <span>Best with headphones</span>
-        </div>
-
-        <div class="hero-panels">
-          <article class="hero-panel hero-panel-intro">
-            <p class="hero-strap">Web Composition and Mixing Workstation</p>
-            <h1>Pleasure</h1>
-            <p class="hero-script">of the senses</p>
-            <p class="hero-footer">About Orchestrion</p>
-          </article>
-
-          <article class="hero-panel hero-panel-featured">
-            <h2>Orchestrion Studio</h2>
-            <p>Build cinematic motifs, full arrangements, and dynamic automation.</p>
-            <p class="hero-subline">Prelude in E major, rewritten by you</p>
-          </article>
-
-          <article class="hero-panel">
-            <h2>Compose</h2>
-            <p>Layer strings, brass, winds, choir, and percussion in a piano-roll score.</p>
-            <p class="hero-subline">Shape every bar with velocity accents</p>
-          </article>
-
-          <article class="hero-panel">
-            <h2>Mix</h2>
-            <p>Balance sections with volume, pan, mute, solo, and ambient send effects.</p>
-            <p class="hero-subline">Export sessions as JSON sketches</p>
-          </article>
-        </div>
-
-        <div class="hero-rail hero-rail-right">
-          <span>Share</span>
-        </div>
-      </header>
-
       <section class="transport card" aria-label="Transport controls">
+        <div class="transport-title">
+          <h1>Orchestrion Studio</h1>
+          <p>Compose, arrange, and mix in one view.</p>
+        </div>
+
         <div class="transport-cluster">
           <button id="playBtn" class="btn btn-primary" type="button">Play</button>
           <button id="stopBtn" class="btn" type="button">Stop</button>
+          <button id="metronomeBtn" class="btn btn-subtle" type="button">Metronome: Off</button>
+          <button id="countInBtn" class="btn btn-subtle" type="button">Count-In: Off</button>
         </div>
 
         <div class="control-group">
@@ -138,13 +107,31 @@
 
       <section class="project-controls card" aria-label="Project controls">
         <div class="project-actions">
+          <button id="undoBtn" class="btn" type="button">Undo</button>
+          <button id="redoBtn" class="btn" type="button">Redo</button>
           <button id="saveLocalBtn" class="btn" type="button">Save Local</button>
           <button id="loadLocalBtn" class="btn" type="button">Load Local</button>
           <button id="exportBtn" class="btn" type="button">Export JSON</button>
           <button id="importBtn" class="btn" type="button">Import JSON</button>
           <input id="importFileInput" type="file" accept="application/json" hidden />
         </div>
+
+        <div class="project-actions">
+          <select id="templateSelect" aria-label="Template selector">
+            <option value="cinematic" selected>Cinematic Pulse</option>
+            <option value="pop">Pop Arp Bed</option>
+            <option value="lofi">Lo-Fi Pocket</option>
+            <option value="drill">Drill Foundation</option>
+          </select>
+          <button id="applyTemplateBtn" class="btn" type="button">Apply Template</button>
+          <button id="duplicatePhraseBtn" class="btn btn-subtle" type="button">Duplicate Phrase</button>
+          <button id="humanizeBtn" class="btn btn-subtle" type="button">Humanize Vel</button>
+          <button id="nudgeLeftBtn" class="btn btn-subtle" type="button">Nudge Left</button>
+          <button id="nudgeRightBtn" class="btn btn-subtle" type="button">Nudge Right</button>
+        </div>
+
         <p class="hint">Tip: Shift + click in the piano roll places an accented note.</p>
+        <p class="hint">Shortcuts: Space Play/Pause, Ctrl/Cmd+S Save, Ctrl/Cmd+Z Undo, Ctrl/Cmd+Shift+Z Redo, M Metronome, C Count-In.</p>
         <p class="hint">Instruments stream from online FluidR3 soundfont APIs with synth fallback while loading.</p>
 
         <div class="integration-grid">

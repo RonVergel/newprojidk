@@ -99,6 +99,8 @@ const SOUNDFONT_INSTRUMENT_MAP = {
 const ui = {
   playBtn: document.getElementById("playBtn"),
   stopBtn: document.getElementById("stopBtn"),
+  metronomeBtn: document.getElementById("metronomeBtn"),
+  countInBtn: document.getElementById("countInBtn"),
   tempoSlider: document.getElementById("tempoSlider"),
   tempoValue: document.getElementById("tempoValue"),
   swingSlider: document.getElementById("swingSlider"),
@@ -113,11 +115,19 @@ const ui = {
   mixerStrips: document.getElementById("mixerStrips"),
   masterMeterFill: document.getElementById("masterMeterFill"),
   masterPeak: document.getElementById("masterPeak"),
+  undoBtn: document.getElementById("undoBtn"),
+  redoBtn: document.getElementById("redoBtn"),
   saveLocalBtn: document.getElementById("saveLocalBtn"),
   loadLocalBtn: document.getElementById("loadLocalBtn"),
   exportBtn: document.getElementById("exportBtn"),
   importBtn: document.getElementById("importBtn"),
   importFileInput: document.getElementById("importFileInput"),
+  templateSelect: document.getElementById("templateSelect"),
+  applyTemplateBtn: document.getElementById("applyTemplateBtn"),
+  duplicatePhraseBtn: document.getElementById("duplicatePhraseBtn"),
+  humanizeBtn: document.getElementById("humanizeBtn"),
+  nudgeLeftBtn: document.getElementById("nudgeLeftBtn"),
+  nudgeRightBtn: document.getElementById("nudgeRightBtn"),
   midiConnectBtn: document.getElementById("midiConnectBtn"),
   midiInputSelect: document.getElementById("midiInputSelect"),
   midiChannelSelect: document.getElementById("midiChannelSelect"),
@@ -141,6 +151,18 @@ const fx = {
   compressor: new Tone.Compressor({ threshold: -22, ratio: 3, attack: 0.01, release: 0.2 }),
   limiter: new Tone.Limiter(-1),
   meter: new Tone.Meter({ normalRange: false, smoothing: 0.83 }),
+  metronomeHigh: new Tone.MembraneSynth({
+    pitchDecay: 0.015,
+    octaves: 2,
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.03 },
+  }),
+  metronomeLow: new Tone.MembraneSynth({
+    pitchDecay: 0.02,
+    octaves: 1,
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.001, decay: 0.045, sustain: 0, release: 0.03 },
+  }),
 };
 
 fx.reverb.connect(fx.masterBus);
@@ -149,6 +171,10 @@ fx.masterBus.connect(fx.compressor);
 fx.compressor.connect(fx.limiter);
 fx.limiter.toDestination();
 fx.limiter.connect(fx.meter);
+fx.metronomeHigh.connect(fx.masterBus);
+fx.metronomeLow.connect(fx.masterBus);
+fx.metronomeHigh.volume.value = -12;
+fx.metronomeLow.volume.value = -17;
 
 let tracks = [];
 let selectedTrackId = null;
@@ -160,6 +186,17 @@ let colorCursor = 0;
 let audioReady = false;
 let pointerPaintMode = null;
 let shownSoundfontFallbackWarning = false;
+let transportTick = 0;
+let metronomeEnabled = false;
+let countInEnabled = false;
+let countInStepsRemaining = 0;
+let didPaintInCurrentStroke = false;
+
+const HISTORY_LIMIT = 80;
+const historyState = {
+  undoStack: [],
+  redoStack: [],
+};
 
 const pointerState = {
   isDown: false,
@@ -244,6 +281,150 @@ function normalizePattern(pattern) {
   }
 
   return normalized;
+}
+
+function cloneSnapshot(snapshot) {
+  return JSON.parse(JSON.stringify(snapshot));
+}
+
+function updateHistoryButtons() {
+  if (ui.undoBtn) {
+    ui.undoBtn.disabled = historyState.undoStack.length === 0;
+  }
+  if (ui.redoBtn) {
+    ui.redoBtn.disabled = historyState.redoStack.length === 0;
+  }
+}
+
+function pushHistory(reason = "edit") {
+  historyState.undoStack.push(cloneSnapshot(projectSnapshot()));
+  if (historyState.undoStack.length > HISTORY_LIMIT) {
+    historyState.undoStack.shift();
+  }
+  historyState.redoStack = [];
+  updateHistoryButtons();
+  if (reason) {
+    setStatus(`Saved undo point for ${reason}.`);
+  }
+}
+
+function pushHistorySilent() {
+  historyState.undoStack.push(cloneSnapshot(projectSnapshot()));
+  if (historyState.undoStack.length > HISTORY_LIMIT) {
+    historyState.undoStack.shift();
+  }
+  historyState.redoStack = [];
+  updateHistoryButtons();
+}
+
+function restoreFromSnapshot(snapshot, sourceLabel = "history") {
+  loadProject(snapshot, sourceLabel, { skipHistoryReset: true });
+}
+
+function undoHistory() {
+  if (historyState.undoStack.length === 0) {
+    setStatus("Nothing to undo.", true);
+    return;
+  }
+
+  historyState.redoStack.push(cloneSnapshot(projectSnapshot()));
+  const previous = historyState.undoStack.pop();
+  restoreFromSnapshot(previous, "undo snapshot");
+  updateHistoryButtons();
+  setStatus("Undo complete.");
+}
+
+function redoHistory() {
+  if (historyState.redoStack.length === 0) {
+    setStatus("Nothing to redo.", true);
+    return;
+  }
+
+  historyState.undoStack.push(cloneSnapshot(projectSnapshot()));
+  const next = historyState.redoStack.pop();
+  restoreFromSnapshot(next, "redo snapshot");
+  updateHistoryButtons();
+  setStatus("Redo complete.");
+}
+
+function shiftTrackPattern(track, direction) {
+  if (!track || !["left", "right"].includes(direction)) {
+    return;
+  }
+
+  for (let noteIndex = 0; noteIndex < NOTE_COUNT; noteIndex += 1) {
+    const row = track.pattern[noteIndex].slice(0, loopSteps);
+    const shifted = Array(loopSteps).fill(0);
+    for (let stepIndex = 0; stepIndex < loopSteps; stepIndex += 1) {
+      const sourceIndex = direction === "left" ? (stepIndex + 1) % loopSteps : (stepIndex - 1 + loopSteps) % loopSteps;
+      shifted[stepIndex] = row[sourceIndex];
+    }
+    for (let stepIndex = 0; stepIndex < loopSteps; stepIndex += 1) {
+      track.pattern[noteIndex][stepIndex] = shifted[stepIndex];
+    }
+  }
+}
+
+function nudgeSelectedTrack(direction) {
+  const selected = getSelectedTrack();
+  if (!selected) {
+    return;
+  }
+
+  pushHistorySilent();
+  shiftTrackPattern(selected, direction);
+  renderPianoRoll();
+  setStatus(`Nudged ${selected.name} ${direction}.`);
+}
+
+function humanizeSelectedTrack() {
+  const selected = getSelectedTrack();
+  if (!selected) {
+    return;
+  }
+
+  pushHistorySilent();
+  let touchedNotes = 0;
+
+  for (let noteIndex = 0; noteIndex < NOTE_COUNT; noteIndex += 1) {
+    for (let stepIndex = 0; stepIndex < loopSteps; stepIndex += 1) {
+      const value = selected.pattern[noteIndex][stepIndex];
+      if (value <= 0) {
+        continue;
+      }
+
+      const delta = (Math.random() - 0.5) * 0.18;
+      selected.pattern[noteIndex][stepIndex] = clamp01(value + delta);
+      touchedNotes += 1;
+    }
+  }
+
+  renderPianoRoll();
+  setStatus(`Humanized ${touchedNotes} notes on ${selected.name}.`);
+}
+
+function duplicatePhraseAcrossLoop() {
+  const selected = getSelectedTrack();
+  if (!selected) {
+    return;
+  }
+
+  const phraseLength = Math.min(16, loopSteps);
+  if (phraseLength <= 0) {
+    return;
+  }
+
+  pushHistorySilent();
+
+  for (let noteIndex = 0; noteIndex < NOTE_COUNT; noteIndex += 1) {
+    const phrase = selected.pattern[noteIndex].slice(0, phraseLength);
+    for (let stepIndex = phraseLength; stepIndex < loopSteps; stepIndex += 1) {
+      selected.pattern[noteIndex][stepIndex] = phrase[stepIndex % phraseLength];
+    }
+  }
+
+  renderPianoRoll();
+  setStatus(`Duplicated first ${phraseLength} steps across the loop on ${selected.name}.`);
 }
 
 function createSynthForInstrument(instrumentName) {
@@ -855,6 +1036,7 @@ function applyYamahaTempoFromLastAnalysis() {
   }
 
   const clampedBpm = clamp(insights.bpm, 50, 180);
+  pushHistorySilent();
   ui.tempoSlider.value = String(Math.round(clampedBpm));
   applyTransportControls();
   setStatus(`Applied BPM ${clampedBpm.toFixed(1)} from Yamaha analysis.`);
@@ -1014,6 +1196,111 @@ function seedStarterPattern() {
     const isDownbeat = step % 8 === 0;
     setNoteOnPattern(percussion, isDownbeat ? "C4" : "G4", step, isDownbeat ? 0.95 : 0.72);
   }
+}
+
+function applyTemplatePattern(templateId) {
+  const template = String(templateId || "cinematic").toLowerCase();
+  const strings = tracks[0];
+  const brass = tracks[1];
+  const woodwinds = tracks[2];
+  const choir = tracks[3];
+  const percussion = tracks[4];
+
+  if (!strings || !brass || !woodwinds || !choir || !percussion) {
+    return;
+  }
+
+  for (const track of tracks) {
+    track.pattern = createPattern();
+  }
+
+  switch (template) {
+    case "pop": {
+      const chords = ["C4", "G4", "A4", "F4"];
+      for (let bar = 0; bar < loopSteps / 4; bar += 1) {
+        const step = bar * 4;
+        const note = chords[bar % chords.length];
+        setNoteOnPattern(strings, note, step, 0.78);
+        setNoteOnPattern(strings, Tone.Frequency(note).transpose(7).toNote(), step + 2, 0.62);
+      }
+      for (let step = 0; step < loopSteps; step += 2) {
+        setNoteOnPattern(percussion, step % 8 === 0 ? "C4" : "G4", step, 0.86);
+      }
+      for (let step = 2; step < loopSteps; step += 8) {
+        setNoteOnPattern(woodwinds, "E5", step, 0.58);
+      }
+      break;
+    }
+    case "lofi": {
+      for (let step = 0; step < loopSteps; step += 4) {
+        setNoteOnPattern(strings, "C4", step, 0.46);
+        setNoteOnPattern(strings, "E4", step, 0.42);
+        setNoteOnPattern(strings, "G4", step, 0.4);
+      }
+      for (let step = 0; step < loopSteps; step += 4) {
+        setNoteOnPattern(percussion, "C4", step, 0.74);
+      }
+      for (let step = 2; step < loopSteps; step += 4) {
+        setNoteOnPattern(percussion, "G4", step, 0.58);
+      }
+      for (let step = 3; step < loopSteps; step += 8) {
+        setNoteOnPattern(choir, "D5", step, 0.48);
+      }
+      break;
+    }
+    case "drill": {
+      for (let step = 0; step < loopSteps; step += 4) {
+        const bass = step % 8 === 0 ? "C4" : "A3";
+        setNoteOnPattern(brass, bass, step, 0.9);
+      }
+      for (let step = 0; step < loopSteps; step += 2) {
+        setNoteOnPattern(percussion, step % 8 === 0 ? "C4" : "G4", step, step % 8 === 0 ? 0.92 : 0.66);
+      }
+      for (let step = 1; step < loopSteps; step += 4) {
+        setNoteOnPattern(woodwinds, "E5", step, 0.6);
+      }
+      for (let step = 7; step < loopSteps; step += 8) {
+        setNoteOnPattern(woodwinds, "D5", step, 0.67);
+      }
+      break;
+    }
+    case "cinematic":
+    default:
+      seedStarterPattern();
+      break;
+  }
+}
+
+function updateTransportOptionButtons() {
+  if (ui.metronomeBtn) {
+    ui.metronomeBtn.textContent = `Metronome: ${metronomeEnabled ? "On" : "Off"}`;
+    ui.metronomeBtn.classList.toggle("btn-primary", metronomeEnabled);
+  }
+
+  if (ui.countInBtn) {
+    ui.countInBtn.textContent = `Count-In: ${countInEnabled ? "On" : "Off"}`;
+    ui.countInBtn.classList.toggle("btn-primary", countInEnabled);
+  }
+}
+
+function toggleMetronome() {
+  metronomeEnabled = !metronomeEnabled;
+  updateTransportOptionButtons();
+  setStatus(`Metronome ${metronomeEnabled ? "enabled" : "disabled"}.`);
+}
+
+function toggleCountIn() {
+  countInEnabled = !countInEnabled;
+  updateTransportOptionButtons();
+  setStatus(`Count-in ${countInEnabled ? "enabled" : "disabled"}.`);
+}
+
+function applyTemplateFromSelect() {
+  const template = ui.templateSelect ? ui.templateSelect.value : "cinematic";
+  pushHistorySilent();
+  applyTemplatePattern(template);
+  renderAll();
+  setStatus(`Applied ${template} template.`);
 }
 
 function createStarterProject() {
@@ -1188,6 +1475,31 @@ function scheduleSequencer() {
   }
 
   sequenceEventId = Tone.Transport.scheduleRepeat((time) => {
+    const isQuarterNote = transportTick % 4 === 0;
+    const beatInBar = Math.floor((transportTick % 16) / 4);
+
+    if (metronomeEnabled && isQuarterNote) {
+      if (beatInBar === 0) {
+        fx.metronomeHigh.triggerAttackRelease("C5", "32n", time, 0.9);
+      } else {
+        fx.metronomeLow.triggerAttackRelease("G4", "32n", time, 0.68);
+      }
+    }
+
+    if (countInStepsRemaining > 0) {
+      countInStepsRemaining -= 1;
+      transportTick += 1;
+
+      if (countInStepsRemaining === 0) {
+        setStatus("Count-in complete. Playback started.");
+        setPlayhead(0);
+      } else {
+        setPlayhead(null);
+      }
+
+      return;
+    }
+
     const step = currentStep % loopSteps;
 
     for (const track of tracks) {
@@ -1205,6 +1517,7 @@ function scheduleSequencer() {
     }, time);
 
     currentStep = (currentStep + 1) % loopSteps;
+    transportTick += 1;
   }, "16n");
 }
 
@@ -1236,18 +1549,18 @@ function paintGridCell(cell, value) {
 function updatePatternAtCell(cell, value, audition = false) {
   const selected = getSelectedTrack();
   if (!selected) {
-    return;
+    return false;
   }
 
   const noteIndex = asNumber(cell.dataset.note, -1);
   const stepIndex = asNumber(cell.dataset.step, -1);
 
   if (noteIndex < 0 || stepIndex < 0 || stepIndex >= loopSteps) {
-    return;
+    return false;
   }
 
   if (selected.pattern[noteIndex][stepIndex] === value) {
-    return;
+    return false;
   }
 
   selected.pattern[noteIndex][stepIndex] = value;
@@ -1256,6 +1569,8 @@ function updatePatternAtCell(cell, value, audition = false) {
   if (audition && value > 0 && audioReady) {
     triggerTrackAttackRelease(selected, NOTE_NAMES[noteIndex], "16n", undefined, value, LIVE_VELOCITY_SCALE);
   }
+
+  return true;
 }
 
 function clearSelectedTrackPattern() {
@@ -1264,12 +1579,15 @@ function clearSelectedTrackPattern() {
     return;
   }
 
+  pushHistorySilent();
   selected.pattern = createPattern();
   renderPianoRoll();
   setStatus(`Cleared notes from ${selected.name}.`);
 }
 
 function addTrack() {
+  pushHistorySilent();
+
   const requestedName = ui.trackNameInput.value.trim();
   const instrument = ui.instrumentSelect.value;
   const generatedName = requestedName || `${instrument} ${tracks.length + 1}`;
@@ -1299,6 +1617,7 @@ function removeTrack(trackId) {
     return;
   }
 
+  pushHistorySilent();
   const [removed] = tracks.splice(index, 1);
   releaseAllMidiNotes();
   disposeTrack(removed);
@@ -1318,6 +1637,9 @@ function projectSnapshot() {
     bpm: clamp(asNumber(ui.tempoSlider.value, 102), 50, 180),
     swing: clamp(asNumber(ui.swingSlider.value, 0), 0, 0.6),
     loopSteps,
+    selectedTrackId,
+    metronomeEnabled,
+    countInEnabled,
     tracks: tracks.map((track) => ({
       id: track.id,
       name: track.name,
@@ -1334,15 +1656,19 @@ function projectSnapshot() {
   };
 }
 
-function loadProject(project, sourceLabel = "project") {
+function loadProject(project, sourceLabel = "project", options = {}) {
   if (!project || !Array.isArray(project.tracks) || project.tracks.length === 0) {
     throw new Error("Project format is invalid.");
   }
+
+  const skipHistoryReset = Boolean(options.skipHistoryReset);
 
   Tone.Transport.stop();
   releaseAllMidiNotes();
   refreshPlayButton();
   currentStep = 0;
+  transportTick = 0;
+  countInStepsRemaining = 0;
 
   for (const track of tracks) {
     disposeTrack(track);
@@ -1355,12 +1681,16 @@ function loadProject(project, sourceLabel = "project") {
     })
   );
 
-  selectedTrackId = tracks[0].id;
+  selectedTrackId = getTrackById(project.selectedTrackId) ? project.selectedTrackId : tracks[0].id;
 
   const allowedLoopSteps = new Set([16, 32, 48, 64]);
   const requestedLoop = asNumber(project.loopSteps, 32);
   loopSteps = allowedLoopSteps.has(requestedLoop) ? requestedLoop : 32;
   ui.loopSelect.value = String(loopSteps);
+
+  metronomeEnabled = Boolean(project.metronomeEnabled);
+  countInEnabled = Boolean(project.countInEnabled);
+  updateTransportOptionButtons();
 
   ui.tempoSlider.value = String(clamp(asNumber(project.bpm, 102), 50, 180));
   ui.swingSlider.value = String(clamp(asNumber(project.swing, 0), 0, 0.6));
@@ -1370,6 +1700,12 @@ function loadProject(project, sourceLabel = "project") {
   scheduleSequencer();
   renderAll();
   setPlayhead(0);
+
+  if (!skipHistoryReset) {
+    historyState.undoStack = [];
+    historyState.redoStack = [];
+    updateHistoryButtons();
+  }
 
   setStatus(`Loaded ${sourceLabel}.`);
 }
@@ -1450,14 +1786,25 @@ async function togglePlayback() {
 
     if (Tone.Transport.state === "started") {
       Tone.Transport.pause();
+      countInStepsRemaining = 0;
       setStatus("Playback paused.");
     } else {
       for (const track of tracks) {
         track.samplerArmed = track.samplerReady && !track.samplerFailed;
       }
 
+      if (countInEnabled) {
+        countInStepsRemaining = 16;
+        setPlayhead(null);
+        setStatus("Count-in started. Playback will enter after one bar.");
+      } else {
+        countInStepsRemaining = 0;
+      }
+
       Tone.Transport.start();
-      setStatus("Playback started.");
+      if (!countInEnabled) {
+        setStatus("Playback started.");
+      }
     }
 
     refreshPlayButton();
@@ -1469,6 +1816,8 @@ async function togglePlayback() {
 function stopPlayback() {
   Tone.Transport.stop();
   currentStep = 0;
+  transportTick = 0;
+  countInStepsRemaining = 0;
   setPlayhead(0);
   releaseAllMidiNotes();
   for (const track of tracks) {
@@ -1515,10 +1864,13 @@ function onPianoRollPointerDown(event) {
 
   const currentValue = selected.pattern[noteIndex][stepIndex];
   pointerState.isDown = true;
+  didPaintInCurrentStroke = false;
   pointerState.value = currentValue > 0 ? 0 : event.shiftKey ? 1 : DEFAULT_NOTE_VELOCITY;
   pointerPaintMode = pointerState.value > 0 ? "add" : "erase";
 
-  updatePatternAtCell(target, pointerState.value, true);
+  pushHistorySilent();
+
+  didPaintInCurrentStroke = updatePatternAtCell(target, pointerState.value, true) || didPaintInCurrentStroke;
 }
 
 function onPianoRollPointerOver(event) {
@@ -1531,11 +1883,17 @@ function onPianoRollPointerOver(event) {
     return;
   }
 
-  updatePatternAtCell(target, pointerState.value, false);
+  didPaintInCurrentStroke = updatePatternAtCell(target, pointerState.value, false) || didPaintInCurrentStroke;
 }
 
 function onPianoRollPointerUp() {
+  if (pointerState.isDown && !didPaintInCurrentStroke && historyState.undoStack.length > 0) {
+    historyState.undoStack.pop();
+    updateHistoryButtons();
+  }
+
   pointerState.isDown = false;
+  didPaintInCurrentStroke = false;
   pointerPaintMode = null;
 }
 
@@ -1618,6 +1976,7 @@ function onMixerChange(event) {
   }
 
   if (target.dataset.action === "instrument") {
+    pushHistorySilent();
     replaceTrackSynth(track, target.value);
     renderTrackList();
     setStatus(`Changed ${track.name} to ${target.value}.`);
@@ -1645,11 +2004,13 @@ function onMixerClick(event) {
 
   switch (action) {
     case "mute":
+      pushHistorySilent();
       track.mute = !track.mute;
       applySoloState();
       renderMixer();
       break;
     case "solo":
+      pushHistorySilent();
       track.solo = !track.solo;
       applySoloState();
       renderMixer();
@@ -1726,6 +2087,18 @@ function bindEvents() {
     stopPlayback();
   });
 
+  if (ui.metronomeBtn) {
+    ui.metronomeBtn.addEventListener("click", () => {
+      toggleMetronome();
+    });
+  }
+
+  if (ui.countInBtn) {
+    ui.countInBtn.addEventListener("click", () => {
+      toggleCountIn();
+    });
+  }
+
   ui.tempoSlider.addEventListener("input", () => {
     applyTransportControls();
   });
@@ -1735,6 +2108,7 @@ function bindEvents() {
   });
 
   ui.loopSelect.addEventListener("change", () => {
+    pushHistorySilent();
     const nextValue = Number(ui.loopSelect.value);
     loopSteps = [16, 32, 48, 64].includes(nextValue) ? nextValue : 32;
     currentStep %= loopSteps;
@@ -1766,6 +2140,44 @@ function bindEvents() {
   ui.mixerStrips.addEventListener("input", onMixerInput);
   ui.mixerStrips.addEventListener("change", onMixerChange);
   ui.mixerStrips.addEventListener("click", onMixerClick);
+
+  if (ui.undoBtn) {
+    ui.undoBtn.addEventListener("click", undoHistory);
+  }
+
+  if (ui.redoBtn) {
+    ui.redoBtn.addEventListener("click", redoHistory);
+  }
+
+  if (ui.applyTemplateBtn) {
+    ui.applyTemplateBtn.addEventListener("click", () => {
+      applyTemplateFromSelect();
+    });
+  }
+
+  if (ui.duplicatePhraseBtn) {
+    ui.duplicatePhraseBtn.addEventListener("click", () => {
+      duplicatePhraseAcrossLoop();
+    });
+  }
+
+  if (ui.humanizeBtn) {
+    ui.humanizeBtn.addEventListener("click", () => {
+      humanizeSelectedTrack();
+    });
+  }
+
+  if (ui.nudgeLeftBtn) {
+    ui.nudgeLeftBtn.addEventListener("click", () => {
+      nudgeSelectedTrack("left");
+    });
+  }
+
+  if (ui.nudgeRightBtn) {
+    ui.nudgeRightBtn.addEventListener("click", () => {
+      nudgeSelectedTrack("right");
+    });
+  }
 
   ui.saveLocalBtn.addEventListener("click", saveLocalProject);
   ui.loadLocalBtn.addEventListener("click", loadLocalProject);
@@ -1843,16 +2255,46 @@ function bindEvents() {
   }
 
   document.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+
     if (event.code === "Space" && !isTextInputElement(event.target)) {
       event.preventDefault();
       togglePlayback();
       return;
     }
 
-    const isSave = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
+    if (!isTextInputElement(event.target) && key === "m") {
+      event.preventDefault();
+      toggleMetronome();
+      return;
+    }
+
+    if (!isTextInputElement(event.target) && key === "c") {
+      event.preventDefault();
+      toggleCountIn();
+      return;
+    }
+
+    const isSave = (event.ctrlKey || event.metaKey) && key === "s";
     if (isSave) {
       event.preventDefault();
       saveLocalProject();
+      return;
+    }
+
+    const isUndo = (event.ctrlKey || event.metaKey) && !event.shiftKey && key === "z";
+    if (isUndo) {
+      event.preventDefault();
+      undoHistory();
+      return;
+    }
+
+    const isRedo =
+      ((event.ctrlKey || event.metaKey) && event.shiftKey && key === "z") ||
+      (event.ctrlKey && !event.shiftKey && key === "y");
+    if (isRedo) {
+      event.preventDefault();
+      redoHistory();
     }
   });
 }
@@ -1862,6 +2304,8 @@ function initialize() {
   populateInstrumentPicker();
   bindEvents();
   applyTransportControls();
+  updateTransportOptionButtons();
+  updateHistoryButtons();
 
   if (!tryLoadBootProject()) {
     createStarterProject();
