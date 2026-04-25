@@ -448,7 +448,7 @@ output {
   padding-right: 2px;
 }
 
-.phrase-guide {
+.chord-guide {
   border: 1px solid rgba(160, 181, 214, 0.24);
   border-radius: var(--radius-md);
   background: linear-gradient(180deg, rgba(13, 24, 40, 0.9), rgba(9, 18, 31, 0.93));
