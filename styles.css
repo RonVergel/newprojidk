@@ -16,11 +16,11 @@
   --accent-rose: #be7186;
   --danger: #de858f;
   --ok: #88d4c1;
-  --radius-lg: 20px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --shadow-soft: 0 20px 50px rgba(2, 5, 9, 0.28);
-  --shadow-hard: 0 20px 35px rgba(3, 6, 12, 0.38);
+  --radius-lg: 2px;
+  --radius-md: 2px;
+  --radius-sm: 2px;
+  --shadow-soft: 6px 6px 0 rgba(3, 8, 15, 0.34), 0 18px 38px rgba(2, 5, 9, 0.24);
+  --shadow-hard: 5px 5px 0 rgba(4, 9, 18, 0.42), 0 16px 30px rgba(3, 6, 12, 0.34);
 }
 
 * {
@@ -100,6 +100,8 @@ body::before {
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
+  outline: 1px solid rgba(205, 220, 243, 0.08);
+  outline-offset: -1px;
   backdrop-filter: blur(5px);
   animation: cardIntro 500ms ease-out both;
 }
@@ -445,7 +447,7 @@ output {
   border: 1px solid rgba(176, 196, 227, 0.32);
   background: linear-gradient(180deg, rgba(23, 37, 58, 0.95), rgba(14, 25, 40, 0.95));
   color: var(--ink);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.38rem 0.78rem;
   font: inherit;
   font-size: 0.82rem;
@@ -470,7 +472,7 @@ output {
   content: "";
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 1px;
   background: var(--track-color, #8fa6cb);
   box-shadow: 0 0 0 1px rgba(10, 18, 30, 0.72);
 }
@@ -661,7 +663,7 @@ output {
 .strip-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 1px;
   background: var(--track-color, #7e93ba);
 }
 
@@ -686,7 +688,7 @@ output {
 .toggle {
   flex: 1;
   border: 1px solid rgba(173, 193, 223, 0.32);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.33rem 0.52rem;
   background: linear-gradient(180deg, rgba(23, 36, 55, 0.93), rgba(15, 25, 40, 0.96));
   color: var(--ink-soft);
@@ -740,7 +742,7 @@ output {
 .master-meter {
   height: 14px;
   background: #0d1d33;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(160, 181, 214, 0.24);
   overflow: hidden;
 }
@@ -894,7 +896,7 @@ output {
 }
 
 ::-webkit-scrollbar-thumb {
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(180deg, rgba(120, 149, 197, 0.78), rgba(79, 99, 140, 0.84));
 }
 

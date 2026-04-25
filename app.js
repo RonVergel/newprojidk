@@ -2,12 +2,19 @@ if (!window.Tone) {
   throw new Error("Tone.js failed to load. Check your internet connection and reload.");
 }
 
+const audioContext = Tone.getContext();
+audioContext.lookAhead = 0.12;
+audioContext.updateInterval = 0.03;
+
 const MAX_STEPS = 64;
 const NOTE_COUNT = 24;
 const TOP_MIDI = 83; // B5
 const STORAGE_KEY = "orchestrion-studio-project-v1";
 const INTEGRATION_STORAGE_KEY = "orchestrion-studio-integrations-v1";
 const DEFAULT_NOTE_VELOCITY = 0.72;
+const SEQUENCER_VELOCITY_SCALE = 0.74;
+const LIVE_VELOCITY_SCALE = 0.82;
+const MASTER_HEADROOM_GAIN = 0.76;
 const SOUNDFONT_BASE_URL = "https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM";
 const SOUNDFONT_SAMPLE_NOTES = [
   "C2",
@@ -128,14 +135,20 @@ const ui = {
 };
 
 const fx = {
-  reverb: new Tone.Reverb({ decay: 4.8, preDelay: 0.02, wet: 1 }),
-  delay: new Tone.FeedbackDelay({ delayTime: "8n", feedback: 0.34, wet: 1 }),
+  reverb: new Tone.Reverb({ decay: 4.2, preDelay: 0.02, wet: 1 }),
+  delay: new Tone.FeedbackDelay({ delayTime: "8n", feedback: 0.26, wet: 1 }),
+  masterBus: new Tone.Gain(MASTER_HEADROOM_GAIN),
+  compressor: new Tone.Compressor({ threshold: -22, ratio: 3, attack: 0.01, release: 0.2 }),
+  limiter: new Tone.Limiter(-1),
   meter: new Tone.Meter({ normalRange: false, smoothing: 0.83 }),
 };
 
-fx.reverb.toDestination();
-fx.delay.toDestination();
-Tone.Destination.connect(fx.meter);
+fx.reverb.connect(fx.masterBus);
+fx.delay.connect(fx.masterBus);
+fx.masterBus.connect(fx.compressor);
+fx.compressor.connect(fx.limiter);
+fx.limiter.toDestination();
+fx.limiter.connect(fx.meter);
 
 let tracks = [];
 let selectedTrackId = null;
@@ -235,10 +248,15 @@ function normalizePattern(pattern) {
 
 function createSynthForInstrument(instrumentName) {
   const preset = INSTRUMENTS[instrumentName] || INSTRUMENTS.Strings;
-  const synth = new Tone.PolySynth(Tone.Synth, { maxPolyphony: 10 });
+  const envelope = {
+    ...preset.envelope,
+    attack: Math.max(0.005, asNumber(preset.envelope.attack, 0.01)),
+  };
+
+  const synth = new Tone.PolySynth(Tone.Synth, { maxPolyphony: 24 });
   synth.set({
     oscillator: { type: preset.oscillator },
-    envelope: preset.envelope,
+    envelope,
   });
   return synth;
 }
@@ -258,7 +276,8 @@ function createSamplerForInstrument(instrumentName, onLoad, onError) {
   return new Tone.Sampler({
     urls,
     baseUrl: `${SOUNDFONT_BASE_URL}/${gmInstrument}-mp3/`,
-    release: 1.1,
+    attack: 0.01,
+    release: 0.65,
     onload: onLoad,
     onerror: onError,
   });
@@ -269,13 +288,18 @@ function initializeTrackSampler(track) {
 
   track.samplerReady = false;
   track.samplerFailed = false;
+  track.samplerArmed = false;
   track.sampler = createSamplerForInstrument(
     track.instrument,
     () => {
       track.samplerReady = true;
+      if (Tone.Transport.state !== "started") {
+        track.samplerArmed = true;
+      }
     },
     () => {
       track.samplerFailed = true;
+      track.samplerArmed = false;
 
       if (!errorNotified) {
         errorNotified = true;
@@ -291,26 +315,42 @@ function initializeTrackSampler(track) {
   track.sampler.connect(track.channel);
 }
 
-function triggerTrackAttackRelease(track, noteName, duration, time, velocity) {
-  if (track.sampler && track.samplerReady && !track.samplerFailed) {
-    track.sampler.triggerAttackRelease(noteName, duration, time, velocity);
-    return;
+function shouldUseSampler(track) {
+  if (!track || !track.sampler || track.samplerFailed || !track.samplerReady) {
+    return false;
   }
 
-  track.synth.triggerAttackRelease(noteName, duration, time, velocity);
+  if (Tone.Transport.state === "started") {
+    return Boolean(track.samplerArmed);
+  }
+
+  return true;
 }
 
-function triggerTrackAttack(track, noteName, time, velocity) {
-  if (track.sampler && track.samplerReady && !track.samplerFailed) {
-    track.sampler.triggerAttack(noteName, time, velocity);
+function triggerTrackAttackRelease(track, noteName, duration, time, velocity, velocityScale = 1) {
+  const safeVelocity = clamp01(velocity * velocityScale);
+
+  if (shouldUseSampler(track)) {
+    track.sampler.triggerAttackRelease(noteName, duration, time, safeVelocity);
     return;
   }
 
-  track.synth.triggerAttack(noteName, time, velocity);
+  track.synth.triggerAttackRelease(noteName, duration, time, safeVelocity);
+}
+
+function triggerTrackAttack(track, noteName, time, velocity, velocityScale = 1) {
+  const safeVelocity = clamp01(velocity * velocityScale);
+
+  if (shouldUseSampler(track)) {
+    track.sampler.triggerAttack(noteName, time, safeVelocity);
+    return;
+  }
+
+  track.synth.triggerAttack(noteName, time, safeVelocity);
 }
 
 function triggerTrackRelease(track, noteName, time) {
-  if (track.sampler && track.samplerReady && !track.samplerFailed) {
+  if (shouldUseSampler(track)) {
     track.sampler.triggerRelease(noteName, time);
     return;
   }
@@ -338,13 +378,14 @@ function createTrack(options = {}) {
     sampler: null,
     samplerReady: false,
     samplerFailed: false,
+    samplerArmed: false,
     channel: null,
     reverbSendNode: null,
     delaySendNode: null,
   };
 
   track.channel = new Tone.Channel({ volume: track.volume, pan: track.pan });
-  track.channel.toDestination();
+  track.channel.connect(fx.masterBus);
 
   track.reverbSendNode = new Tone.Gain(track.reverbSend);
   track.delaySendNode = new Tone.Gain(track.delaySend);
@@ -506,7 +547,7 @@ function onMidiMessage(event) {
 
     const normalizedVelocity = clamp(data2 / 127, 0.05, 1);
     const noteName = NOTE_NAMES[noteIndex];
-    triggerTrackAttack(selected, noteName, undefined, normalizedVelocity);
+    triggerTrackAttack(selected, noteName, undefined, normalizedVelocity, LIVE_VELOCITY_SCALE);
     midiState.activeNotes.set(noteKey, { trackId: selected.id, noteName });
 
     if (midiState.captureToGrid) {
@@ -1154,7 +1195,7 @@ function scheduleSequencer() {
         const velocity = track.pattern[noteIndex][step];
         if (velocity > 0) {
           const noteDuration = track.instrument === "Percussion" ? "32n" : "16n";
-          triggerTrackAttackRelease(track, NOTE_NAMES[noteIndex], noteDuration, time, velocity);
+          triggerTrackAttackRelease(track, NOTE_NAMES[noteIndex], noteDuration, time, velocity, SEQUENCER_VELOCITY_SCALE);
         }
       }
     }
@@ -1213,7 +1254,7 @@ function updatePatternAtCell(cell, value, audition = false) {
   paintGridCell(cell, value);
 
   if (audition && value > 0 && audioReady) {
-    triggerTrackAttackRelease(selected, NOTE_NAMES[noteIndex], "16n", undefined, value);
+    triggerTrackAttackRelease(selected, NOTE_NAMES[noteIndex], "16n", undefined, value, LIVE_VELOCITY_SCALE);
   }
 }
 
@@ -1411,6 +1452,10 @@ async function togglePlayback() {
       Tone.Transport.pause();
       setStatus("Playback paused.");
     } else {
+      for (const track of tracks) {
+        track.samplerArmed = track.samplerReady && !track.samplerFailed;
+      }
+
       Tone.Transport.start();
       setStatus("Playback started.");
     }
@@ -1427,6 +1472,7 @@ function stopPlayback() {
   setPlayhead(0);
   releaseAllMidiNotes();
   for (const track of tracks) {
+    track.samplerArmed = track.samplerReady && !track.samplerFailed;
     track.synth.releaseAll();
     if (track.sampler && track.samplerReady && typeof track.sampler.releaseAll === "function") {
       track.sampler.releaseAll();
