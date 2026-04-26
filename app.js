@@ -92,6 +92,7 @@ const CHORD_LIBRARY = CHORD_ROOTS.flatMap((root) => {
 
 const TRACK_COLORS = ["#bf5f2f", "#1a7c79", "#a2413e", "#5f6fbb", "#b27a2d", "#3f8a52", "#9e3651", "#6e54a8"];
 
+const INSTRUMENTS = {
   Strings: { oscillator: "sawtooth", envelope: { attack: 0.12, decay: 0.2, sustain: 0.62, release: 1.3 }, volume: -8, reverbSend: 0.28, delaySend: 0.07 },
   "Electric Guitar": { oscillator: "sawtooth", envelope: { attack: 0.01, decay: 0.5, sustain: 0.2, release: 1 }, volume: -8, reverbSend: 0.1, delaySend: 0.05 },
   "Acoustic Guitar": { oscillator: "triangle", envelope: { attack: 0.005, decay: 0.8, sustain: 0.1, release: 1 }, volume: -9, reverbSend: 0.2, delaySend: 0 },
