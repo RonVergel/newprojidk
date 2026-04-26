@@ -92,14 +92,21 @@ const CHORD_LIBRARY = CHORD_ROOTS.flatMap((root) => {
 
 const TRACK_COLORS = ["#bf5f2f", "#1a7c79", "#a2413e", "#5f6fbb", "#b27a2d", "#3f8a52", "#9e3651", "#6e54a8"];
 
-const INSTRUMENTS = {
   Strings: { oscillator: "sawtooth", envelope: { attack: 0.12, decay: 0.2, sustain: 0.62, release: 1.3 }, volume: -8, reverbSend: 0.28, delaySend: 0.07 },
+  "Electric Guitar": { oscillator: "sawtooth", envelope: { attack: 0.01, decay: 0.5, sustain: 0.2, release: 1 }, volume: -8, reverbSend: 0.1, delaySend: 0.05 },
+  "Acoustic Guitar": { oscillator: "triangle", envelope: { attack: 0.005, decay: 0.8, sustain: 0.1, release: 1 }, volume: -9, reverbSend: 0.2, delaySend: 0 },
+  "Electric Bass": { oscillator: "square", envelope: { attack: 0.01, decay: 0.4, sustain: 0.3, release: 0.5 }, volume: -7, reverbSend: 0.02, delaySend: 0 },
+  "Acoustic Bass": { oscillator: "triangle", envelope: { attack: 0.02, decay: 0.5, sustain: 0.2, release: 0.8 }, volume: -8, reverbSend: 0.05, delaySend: 0 },
   Brass: { oscillator: "square", envelope: { attack: 0.04, decay: 0.16, sustain: 0.5, release: 0.65 }, volume: -10, reverbSend: 0.17, delaySend: 0.04 },
   Woodwinds: { oscillator: "triangle", envelope: { attack: 0.05, decay: 0.12, sustain: 0.46, release: 0.56 }, volume: -9, reverbSend: 0.14, delaySend: 0.1 },
   Choir: { oscillator: "sine", envelope: { attack: 0.18, decay: 0.24, sustain: 0.74, release: 1.75 }, volume: -11, reverbSend: 0.33, delaySend: 0.06 },
   Percussion: { oscillator: "square", envelope: { attack: 0.001, decay: 0.11, sustain: 0.02, release: 0.18 }, volume: -8, reverbSend: 0.08, delaySend: 0.02 },
   Piano: { oscillator: "triangle", envelope: { attack: 0.01, decay: 0.25, sustain: 0.2, release: 1.4 }, volume: -9, reverbSend: 0.25, delaySend: 0.05 },
   "Drum Machine": { oscillator: "square", envelope: { attack: 0.001, decay: 0.09, sustain: 0.01, release: 0.12 }, volume: -8, reverbSend: 0.04, delaySend: 0 },
+  "Kick Drum": { oscillator: "sine", envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.1 }, volume: -6, reverbSend: 0.01, delaySend: 0 },
+  "Snare Drum": { oscillator: "square", envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }, volume: -7, reverbSend: 0.1, delaySend: 0 },
+  "Hi-Hat": { oscillator: "sawtooth", envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }, volume: -10, reverbSend: 0.02, delaySend: 0 },
+  "Toms": { oscillator: "triangle", envelope: { attack: 0.005, decay: 0.3, sustain: 0, release: 0.2 }, volume: -8, reverbSend: 0.08, delaySend: 0 },
   "Cinematic Percussion": { oscillator: "triangle", envelope: { attack: 0.002, decay: 0.14, sustain: 0.02, release: 0.2 }, volume: -9, reverbSend: 0.16, delaySend: 0.02 },
   "Mallets": { oscillator: "sine", envelope: { attack: 0.002, decay: 0.2, sustain: 0.02, release: 0.5 }, volume: -10, reverbSend: 0.2, delaySend: 0.04 },
   "Woodblock": { oscillator: "square", envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.1 }, volume: -8, reverbSend: 0.05, delaySend: 0 },
@@ -118,12 +125,20 @@ const INSTRUMENTS = {
 
 const SOUNDFONT_INSTRUMENT_MAP = {
   Strings: "string_ensemble_1",
+  "Electric Guitar": "electric_guitar_clean",
+  "Acoustic Guitar": "acoustic_guitar_nylon",
+  "Electric Bass": "electric_bass_finger",
+  "Acoustic Bass": "acoustic_bass",
   Brass: "brass_section",
   Woodwinds: "oboe",
   Choir: "choir_aahs",
   Percussion: "timpani",
   Piano: "acoustic_grand_piano",
   "Drum Machine": "synth_drum",
+  "Kick Drum": "synth_drum",
+  "Snare Drum": "synth_drum",
+  "Hi-Hat": "synth_drum",
+  "Toms": "melodic_tom",
   "Cinematic Percussion": "taiko_drum",
   "Mallets": "marimba",
   "Woodblock": "woodblock",
@@ -142,12 +157,20 @@ const SOUNDFONT_INSTRUMENT_MAP = {
 
 const INSTRUMENT_MIDI_PROGRAMS = {
   Strings: 49,
+  "Electric Guitar": 28,
+  "Acoustic Guitar": 25,
+  "Electric Bass": 34,
+  "Acoustic Bass": 33,
   Brass: 62,
   Woodwinds: 69,
   Choir: 53,
   Percussion: 48,
   Piano: 1,
   "Drum Machine": 119,
+  "Kick Drum": 119,
+  "Snare Drum": 119,
+  "Hi-Hat": 119,
+  "Toms": 118,
   "Cinematic Percussion": 117,
   "Mallets": 13,
   "Woodblock": 116,
@@ -165,12 +188,16 @@ const INSTRUMENT_MIDI_PROGRAMS = {
 };
 
 const INSTRUMENT_GROUPS = {
-  "String Instruments (Chordophones)": ["Strings"],
+  "String Instruments (Chordophones)": ["Strings", "Electric Guitar", "Acoustic Guitar", "Electric Bass", "Acoustic Bass"],
   "Wind Instruments (Aerophones)": ["Brass", "Woodwinds"],
   "Keyboard Instruments": ["Piano"],
   "Percussion Instruments (Idiophones/Membranophones)": [
     "Percussion",
     "Drum Machine",
+    "Kick Drum",
+    "Snare Drum",
+    "Hi-Hat",
+    "Toms",
     "Cinematic Percussion",
     "Mallets",
     "Woodblock",
