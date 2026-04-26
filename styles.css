@@ -500,7 +500,7 @@ output {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 0.48rem;
-  max-height: 88px;
+  max-height: 44px;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -599,7 +599,7 @@ output {
   border-radius: var(--radius-md);
   background: linear-gradient(165deg, rgba(6, 14, 26, 0.94), rgba(8, 17, 30, 0.94));
   position: relative;
-  overflow: hidden;
+  overflow: auto;
   min-height: 350px;
 }
 
