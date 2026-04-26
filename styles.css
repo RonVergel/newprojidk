@@ -649,6 +649,10 @@ body.composer-modal-open .composer {
   grid-template-rows: auto auto auto minmax(0, 1fr);
 }
 
+body.composer-modal-open .phrase-guide-head p {
+  display: none;
+}
+
 body.composer-modal-open .roll-frame {
   min-height: 0;
 }
@@ -667,7 +671,7 @@ body.composer-modal-open .composer-close-btn {
 }
 
 .piano-roll {
-  min-width: fit-content;
+  min-width: max-content;
   padding: 0.35rem;
 }
 
