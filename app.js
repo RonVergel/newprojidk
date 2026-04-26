@@ -598,7 +598,25 @@ function noteNameToSoundfontFile(noteName) {
   return `${noteName.replace("#", "s")}.mp3`;
 }
 
+const DRUM_SAMPLES = {
+  "Kick Drum": "https://tonejs.github.io/audio/drum-samples/CR78/kick.mp3",
+  "Snare Drum": "https://tonejs.github.io/audio/drum-samples/CR78/snare.mp3",
+  "Hi-Hat": "https://tonejs.github.io/audio/drum-samples/CR78/hihat.mp3",
+  "Toms": "https://tonejs.github.io/audio/drum-samples/CR78/tom1.mp3",
+  "Drum Machine": "https://tonejs.github.io/audio/drum-samples/CR78/kick.mp3",
+};
+
 function createSamplerForInstrument(instrumentName, onLoad, onError) {
+  if (DRUM_SAMPLES[instrumentName]) {
+    return new Tone.Sampler({
+      urls: { "C4": DRUM_SAMPLES[instrumentName] },
+      attack: 0.01,
+      release: 0.65,
+      onload: onLoad,
+      onerror: onError,
+    });
+  }
+
   const gmInstrument = SOUNDFONT_INSTRUMENT_MAP[instrumentName] || "acoustic_grand_piano";
   const urls = {};
 
