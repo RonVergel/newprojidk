@@ -1309,3 +1309,67 @@ body.composer-modal-open .composer-close-btn {
   height: 90%;
   overflow: auto;
 }
+
+/* ===== MODAL FULLSCREEN FIX ===== */
+
+#composerModalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  z-index: 9998;
+}
+
+#composerModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  z-index: 9999;
+}
+
+#composerModal.active {
+  display: flex;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+/* THIS PART IS CRITICAL */
+#modalComposerWrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* THIS ENABLES SCROLLING */
+#modalComposerWrapper #composerContainer {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+#composerContainer {
+  overflow-x: auto !important;
+  overflow-y: auto;
+}
+
+#composerGrid {
+  min-width: 2500px;
+}
+
+#chordPalette {
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 4px;
+}
