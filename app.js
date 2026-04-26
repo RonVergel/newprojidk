@@ -93,125 +93,27 @@ const CHORD_LIBRARY = CHORD_ROOTS.flatMap((root) => {
 const TRACK_COLORS = ["#bf5f2f", "#1a7c79", "#a2413e", "#5f6fbb", "#b27a2d", "#3f8a52", "#9e3651", "#6e54a8"];
 
 const INSTRUMENTS = {
-  Strings: {
-    oscillator: "sawtooth",
-    envelope: { attack: 0.12, decay: 0.2, sustain: 0.62, release: 1.3 },
-    volume: -8,
-    reverbSend: 0.28,
-    delaySend: 0.07,
-  },
-  Brass: {
-    oscillator: "square",
-    envelope: { attack: 0.04, decay: 0.16, sustain: 0.5, release: 0.65 },
-    volume: -10,
-    reverbSend: 0.17,
-    delaySend: 0.04,
-  },
-  Woodwinds: {
-    oscillator: "triangle",
-    envelope: { attack: 0.05, decay: 0.12, sustain: 0.46, release: 0.56 },
-    volume: -9,
-    reverbSend: 0.14,
-    delaySend: 0.1,
-  },
-  Choir: {
-    oscillator: "sine",
-    envelope: { attack: 0.18, decay: 0.24, sustain: 0.74, release: 1.75 },
-    volume: -11,
-    reverbSend: 0.33,
-    delaySend: 0.06,
-  },
-  Percussion: {
-    oscillator: "square",
-    envelope: { attack: 0.001, decay: 0.11, sustain: 0.02, release: 0.18 },
-    volume: -8,
-    reverbSend: 0.08,
-    delaySend: 0.02,
-  },
-  Piano: {
-    oscillator: "triangle",
-    envelope: { attack: 0.01, decay: 0.25, sustain: 0.2, release: 1.4 },
-    volume: -9,
-    reverbSend: 0.25,
-    delaySend: 0.05,
-  },
-  "Drum Machine": {
-    oscillator: "square",
-    envelope: { attack: 0.001, decay: 0.09, sustain: 0.01, release: 0.12 },
-    volume: -8,
-    reverbSend: 0.04,
-    delaySend: 0,
-  },
-  "Cinematic Percussion": {
-    oscillator: "triangle",
-    envelope: { attack: 0.002, decay: 0.14, sustain: 0.02, release: 0.2 },
-    volume: -9,
-    reverbSend: 0.16,
-    delaySend: 0.02,
-  },
-  "Mallets": {
-    oscillator: "sine",
-    envelope: { attack: 0.002, decay: 0.2, sustain: 0.02, release: 0.5 },
-    volume: -10,
-    reverbSend: 0.2,
-    delaySend: 0.04,
-  },
-  "Sub Bass": {
-    oscillator: "sine",
-    envelope: { attack: 0.01, decay: 0.12, sustain: 0.7, release: 0.25 },
-    volume: -7,
-    reverbSend: 0.01,
-    delaySend: 0.01,
-  },
-  "EDM Bass": {
-    oscillator: "sawtooth",
-    envelope: { attack: 0.005, decay: 0.12, sustain: 0.48, release: 0.2 },
-    volume: -8,
-    reverbSend: 0.03,
-    delaySend: 0.03,
-  },
-  "EDM Lead": {
-    oscillator: "square",
-    envelope: { attack: 0.01, decay: 0.11, sustain: 0.36, release: 0.2 },
-    volume: -9,
-    reverbSend: 0.12,
-    delaySend: 0.18,
-  },
-  "EDM Pluck": {
-    oscillator: "triangle",
-    envelope: { attack: 0.001, decay: 0.18, sustain: 0.02, release: 0.16 },
-    volume: -8,
-    reverbSend: 0.11,
-    delaySend: 0.14,
-  },
-  "Synth Pad": {
-    oscillator: "sawtooth",
-    envelope: { attack: 0.24, decay: 0.22, sustain: 0.78, release: 1.9 },
-    volume: -11,
-    reverbSend: 0.35,
-    delaySend: 0.08,
-  },
-  "Techno Stab": {
-    oscillator: "square",
-    envelope: { attack: 0.001, decay: 0.13, sustain: 0.08, release: 0.12 },
-    volume: -9,
-    reverbSend: 0.07,
-    delaySend: 0.06,
-  },
-  Arp: {
-    oscillator: "triangle",
-    envelope: { attack: 0.002, decay: 0.14, sustain: 0.22, release: 0.18 },
-    volume: -9,
-    reverbSend: 0.09,
-    delaySend: 0.2,
-  },
-  "FX Atmos": {
-    oscillator: "sine",
-    envelope: { attack: 0.4, decay: 0.3, sustain: 0.74, release: 2.2 },
-    volume: -12,
-    reverbSend: 0.42,
-    delaySend: 0.2,
-  },
+  Strings: { oscillator: "sawtooth", envelope: { attack: 0.12, decay: 0.2, sustain: 0.62, release: 1.3 }, volume: -8, reverbSend: 0.28, delaySend: 0.07 },
+  Brass: { oscillator: "square", envelope: { attack: 0.04, decay: 0.16, sustain: 0.5, release: 0.65 }, volume: -10, reverbSend: 0.17, delaySend: 0.04 },
+  Woodwinds: { oscillator: "triangle", envelope: { attack: 0.05, decay: 0.12, sustain: 0.46, release: 0.56 }, volume: -9, reverbSend: 0.14, delaySend: 0.1 },
+  Choir: { oscillator: "sine", envelope: { attack: 0.18, decay: 0.24, sustain: 0.74, release: 1.75 }, volume: -11, reverbSend: 0.33, delaySend: 0.06 },
+  Percussion: { oscillator: "square", envelope: { attack: 0.001, decay: 0.11, sustain: 0.02, release: 0.18 }, volume: -8, reverbSend: 0.08, delaySend: 0.02 },
+  Piano: { oscillator: "triangle", envelope: { attack: 0.01, decay: 0.25, sustain: 0.2, release: 1.4 }, volume: -9, reverbSend: 0.25, delaySend: 0.05 },
+  "Drum Machine": { oscillator: "square", envelope: { attack: 0.001, decay: 0.09, sustain: 0.01, release: 0.12 }, volume: -8, reverbSend: 0.04, delaySend: 0 },
+  "Cinematic Percussion": { oscillator: "triangle", envelope: { attack: 0.002, decay: 0.14, sustain: 0.02, release: 0.2 }, volume: -9, reverbSend: 0.16, delaySend: 0.02 },
+  "Mallets": { oscillator: "sine", envelope: { attack: 0.002, decay: 0.2, sustain: 0.02, release: 0.5 }, volume: -10, reverbSend: 0.2, delaySend: 0.04 },
+  "Woodblock": { oscillator: "square", envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.1 }, volume: -8, reverbSend: 0.05, delaySend: 0 },
+  "Steel Drums": { oscillator: "sine", envelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 0.8 }, volume: -9, reverbSend: 0.15, delaySend: 0.05 },
+  "Melodic Tom": { oscillator: "triangle", envelope: { attack: 0.005, decay: 0.4, sustain: 0.05, release: 0.5 }, volume: -8, reverbSend: 0.1, delaySend: 0 },
+  "Reverse Cymbal": { oscillator: "noise", envelope: { attack: 0.5, decay: 0.1, sustain: 0, release: 0.1 }, volume: -10, reverbSend: 0.2, delaySend: 0.1 },
+  "Sub Bass": { oscillator: "sine", envelope: { attack: 0.01, decay: 0.12, sustain: 0.7, release: 0.25 }, volume: -7, reverbSend: 0.01, delaySend: 0.01 },
+  "EDM Bass": { oscillator: "sawtooth", envelope: { attack: 0.005, decay: 0.12, sustain: 0.48, release: 0.2 }, volume: -8, reverbSend: 0.03, delaySend: 0.03 },
+  "EDM Lead": { oscillator: "square", envelope: { attack: 0.01, decay: 0.11, sustain: 0.36, release: 0.2 }, volume: -9, reverbSend: 0.12, delaySend: 0.18 },
+  "EDM Pluck": { oscillator: "triangle", envelope: { attack: 0.001, decay: 0.18, sustain: 0.02, release: 0.16 }, volume: -8, reverbSend: 0.11, delaySend: 0.14 },
+  "Synth Pad": { oscillator: "sawtooth", envelope: { attack: 0.24, decay: 0.22, sustain: 0.78, release: 1.9 }, volume: -11, reverbSend: 0.35, delaySend: 0.08 },
+  "Techno Stab": { oscillator: "square", envelope: { attack: 0.001, decay: 0.13, sustain: 0.08, release: 0.12 }, volume: -9, reverbSend: 0.07, delaySend: 0.06 },
+  Arp: { oscillator: "triangle", envelope: { attack: 0.002, decay: 0.14, sustain: 0.22, release: 0.18 }, volume: -9, reverbSend: 0.09, delaySend: 0.2 },
+  "FX Atmos": { oscillator: "sine", envelope: { attack: 0.4, decay: 0.3, sustain: 0.74, release: 2.2 }, volume: -12, reverbSend: 0.42, delaySend: 0.2 },
 };
 
 const SOUNDFONT_INSTRUMENT_MAP = {
@@ -224,6 +126,10 @@ const SOUNDFONT_INSTRUMENT_MAP = {
   "Drum Machine": "synth_drum",
   "Cinematic Percussion": "taiko_drum",
   "Mallets": "marimba",
+  "Woodblock": "woodblock",
+  "Steel Drums": "steel_drums",
+  "Melodic Tom": "melodic_tom",
+  "Reverse Cymbal": "reverse_cymbal",
   "Sub Bass": "synth_bass_1",
   "EDM Bass": "synth_bass_2",
   "EDM Lead": "lead_2_sawtooth",
@@ -244,14 +150,45 @@ const INSTRUMENT_MIDI_PROGRAMS = {
   "Drum Machine": 119,
   "Cinematic Percussion": 117,
   "Mallets": 13,
+  "Woodblock": 116,
+  "Steel Drums": 115,
+  "Melodic Tom": 118,
+  "Reverse Cymbal": 120,
   "Sub Bass": 39,
   "EDM Bass": 40,
   "EDM Lead": 82,
   "EDM Pluck": 81,
-  "Synth Pad": 91,
+  "Synth Pad": 90,
   "Techno Stab": 63,
   Arp: 8,
   "FX Atmos": 100,
+};
+
+const INSTRUMENT_GROUPS = {
+  "String Instruments (Chordophones)": ["Strings"],
+  "Wind Instruments (Aerophones)": ["Brass", "Woodwinds"],
+  "Keyboard Instruments": ["Piano"],
+  "Percussion Instruments (Idiophones/Membranophones)": [
+    "Percussion",
+    "Drum Machine",
+    "Cinematic Percussion",
+    "Mallets",
+    "Woodblock",
+    "Steel Drums",
+    "Melodic Tom",
+    "Reverse Cymbal"
+  ],
+  "Electronic Instruments (Electrophones)": [
+    "Choir",
+    "Sub Bass",
+    "EDM Bass",
+    "EDM Lead",
+    "EDM Pluck",
+    "Synth Pad",
+    "Techno Stab",
+    "Arp",
+    "FX Atmos"
+  ]
 };
 
 const ui = {
@@ -1757,13 +1694,27 @@ function renderPianoRoll() {
 
     for (let step = 0; step < loopSteps; step += 1) {
       const velocity = selected.pattern[noteIndex][step];
+      
+      let isGhost = false;
+      if (velocity === 0) {
+        for (const track of tracks) {
+          if (track.id !== selected.id && track.pattern[noteIndex][step] > 0) {
+            isGhost = true;
+            break;
+          }
+        }
+      }
+
       const classNames = ["step-cell"];
       if ((step + 1) % 4 === 0) {
         classNames.push("bar");
       }
       if (velocity > 0) {
         classNames.push("active");
+      } else if (isGhost) {
+        classNames.push("ghost");
       }
+      
       if (velocity >= 0.95) {
         classNames.push("accent");
       }
@@ -1784,12 +1735,18 @@ function renderPianoRoll() {
 }
 
 function buildInstrumentSelectOptions(selectedInstrument) {
-  return Object.keys(INSTRUMENTS)
-    .map((instrumentName) => {
-      const selectedFlag = instrumentName === selectedInstrument ? " selected" : "";
-      return `<option value="${instrumentName}"${selectedFlag}>${instrumentName}</option>`;
-    })
-    .join("");
+  let markup = "";
+  for (const [groupName, instruments] of Object.entries(INSTRUMENT_GROUPS)) {
+    markup += `<optgroup label="${groupName}">`;
+    for (const instrumentName of instruments) {
+      if (INSTRUMENTS[instrumentName]) {
+        const selectedFlag = instrumentName === selectedInstrument ? " selected" : "";
+        markup += `<option value="${instrumentName}"${selectedFlag}>${instrumentName}</option>`;
+      }
+    }
+    markup += `</optgroup>`;
+  }
+  return markup;
 }
 
 function renderMixer() {
